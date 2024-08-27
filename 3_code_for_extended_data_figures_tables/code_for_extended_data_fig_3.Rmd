@@ -1,0 +1,428 @@
+---
+title: "Extended Data Figure 3"
+author: "Donghyun Kang"
+date: "2024-08-21"
+output: html_document
+---
+
+```{r, message=F}
+library(tidyverse)
+library(extrafont)
+require(gtable)
+require(gridExtra)
+library(grid)
+df <- read_tsv("../0_data/extended_data_fig_3_data.tsv")
+```
+
+
+```{r}
+for_panel_a <- df %>%
+  filter(src_pmid == 10809678) %>%
+  select(calendar_year, cite_diff_2y_scaled, rolling_2y_cite) %>%
+  pivot_longer(-calendar_year)
+
+# Set x-axis limits and breaks for this data
+x_limits <- c(1991, 2020)
+x_breaks <- seq(1991, 2020, by = 10)
+
+# First plot (rolling_2y_cite)
+panel_a_1 <- for_panel_a %>%
+  filter(calendar_year <= 2019, calendar_year >= 1990) %>%
+  filter(name == 'rolling_2y_cite') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = "#009E73") + 
+  geom_line(linewidth = 0.8, color = "#009E73") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(margin = margin(r = 10)),  # Add margin to the y-axis text
+        axis.title.y = element_text(angle = 90, vjust = 0.5)) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) + 
+  scale_y_continuous(labels = scales::label_number(accuracy = 1)) +  # Adjust y-axis labels format
+  labs(title = "A. Subfield by PMID:10809678") +
+  ylab('2y Avg. Citations')  # Y-axis label for the first plot
+
+# Second plot (cite_diff_2y_scaled)
+panel_a_2 <- for_panel_a %>%
+  filter(calendar_year <= 2019, calendar_year >= 1990) %>%
+  filter(name == 'cite_diff_2y_scaled') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = 'darkgrey', shape = 15) + 
+  geom_line(linewidth = 0.8, linetype = 1, color = "darkgrey") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  theme(axis.title.y = element_text(angle = 0, vjust = 0.5, margin = margin(r = 10)),  # Add margin to y-axis labels
+        axis.text.y = element_text(margin = margin(r = 10)),
+        axis.title.x = element_blank(),
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.1)) +  # Adjust y-axis labels format
+  ylab(bquote(z[it])) +  # Y-axis label for the second plot
+  xlab("")  # Leave x-axis label blank for now
+
+# Align and arrange the plots
+gA <- ggplotGrob(panel_a_1)
+gB <- ggplotGrob(panel_a_2)
+maxWidth <- grid::unit.pmax(gA$widths[2:5], gB$widths[2:5])
+gA$widths[2:5] <- as.list(maxWidth)
+gB$widths[2:5] <- as.list(maxWidth)
+
+# Combine the plots vertically
+panel_a <- grid.arrange(gA, gB, ncol = 1)
+
+```
+
+```{r}
+for_panel_b <- df %>%
+  filter(src_pmid == 2529260) %>%
+  select(calendar_year, cite_diff_2y_scaled, rolling_2y_cite) %>%
+  pivot_longer(-calendar_year)
+
+# Set x-axis limits and breaks for this data
+x_limits <- c(1976, 2019)
+x_breaks <- seq(1976, 2019, by = 10)
+
+# First plot (rolling_2y_cite)
+panel_b_1 <- for_panel_b %>%
+  filter(calendar_year <= 2019, calendar_year >= 1976) %>%
+  filter(name == 'rolling_2y_cite') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = "#009E73") + 
+  geom_line(linewidth = 0.8, color = "#009E73") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(margin = margin(r = 10)),  # Add margin to the y-axis text
+        axis.title.y = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) + 
+  scale_y_continuous(labels = scales::label_number(accuracy = 1)) +  # Adjust y-axis labels format
+  labs(title = "B. Subfield by PMID:2529260") +
+  ylab("")  # Make y-axis label blank
+
+# Second plot (cite_diff_2y_scaled)
+panel_b_2 <- for_panel_b %>%
+  filter(calendar_year <= 2019, calendar_year >= 1976) %>%
+  filter(name == 'cite_diff_2y_scaled') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = 'darkgrey', shape = 15) + 
+  geom_line(linewidth = 0.8, linetype = 1, color = "darkgrey") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  theme(axis.title.y = element_text(angle = 0, vjust = 0.5, margin = margin(r = 10)),  # Add margin to y-axis labels
+        axis.text.y = element_text(margin = margin(r = 10)),
+        axis.title.x = element_blank(),
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.1)) +  # Adjust y-axis labels format
+  ylab("")  # Make y-axis label blank
+
+# Align and arrange the plots
+gA <- ggplotGrob(panel_b_1)
+gB <- ggplotGrob(panel_b_2)
+maxWidth <- grid::unit.pmax(gA$widths[2:5], gB$widths[2:5])
+gA$widths[2:5] <- as.list(maxWidth)
+gB$widths[2:5] <- as.list(maxWidth)
+
+# Combine the plots vertically
+panel_b <- grid.arrange(gA, gB, ncol = 1)
+```
+```{r}
+
+for_panel_c <- df %>%
+  filter(src_pmid == 11917126) %>%
+  select(calendar_year, cite_diff_2y_scaled, rolling_2y_cite) %>%
+  pivot_longer(-calendar_year)
+
+# Set x-axis limits and breaks
+x_limits <- c(1980, 2019)
+x_breaks <- seq(1980, 2019, by = 10)
+
+# First plot (rolling_2y_cite)
+panel_c_1 <- for_panel_c %>%
+  filter(calendar_year <= 2019, calendar_year >= 1980) %>%
+  filter(name == 'rolling_2y_cite') %>%
+  ggplot(aes(x=calendar_year, y = value)) + 
+  geom_point(size=1, color="#009E73") + 
+  geom_line(linewidth = 0.8, color="#009E73") + 
+  theme_bw(base_family = "Gill Sans MT", base_size=12) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y = element_text(margin=margin(r=10)),  # Add margin to the y-axis text
+        axis.title.y = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) + 
+  scale_y_continuous(labels = scales::label_number(accuracy = 1)) +  # Adjust y-axis labels format
+  labs(title = "C. Subfield by PMID:11917126") +
+  ylab("")  # Make y-axis label blank
+
+# Second plot (cite_diff_2y_scaled)
+panel_c_2 <- for_panel_c %>%
+  filter(calendar_year <= 2019, calendar_year >= 1980) %>%
+  filter(name == 'cite_diff_2y_scaled') %>%
+  ggplot(aes(x=calendar_year, y = value)) + 
+  geom_point(size=1, color='darkgrey', shape=15) + 
+  geom_line(linewidth = 0.8, linetype=1, color = "darkgrey") + 
+  theme_bw(base_family = "Gill Sans MT", base_size=12) +
+  theme(axis.title.x=element_blank(),
+        axis.text.y = element_text(margin=margin(r=10)),  # Add margin to y-axis labels
+        axis.title.y = element_blank(),
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.1)) +  # Adjust y-axis labels format
+  ylab("")  # Make y-axis label blank
+
+# Align and arrange the plots
+gA <- ggplotGrob(panel_c_1)
+gB <- ggplotGrob(panel_c_2)
+maxWidth = grid::unit.pmax(gA$widths[2:5], gB$widths[2:5])
+gA$widths[2:5] <- as.list(maxWidth)
+gB$widths[2:5] <- as.list(maxWidth)
+
+# Combine the plots vertically
+panel_c <- grid.arrange(gA, gB, ncol=1)
+```
+
+
+
+
+```{r}
+for_panel_d <- df %>%
+  filter(src_pmid == 6934526) %>%
+  select(calendar_year, cite_diff_2y_scaled, rolling_2y_cite) %>%
+  pivot_longer(-calendar_year)
+
+# Set x-axis limits and breaks for this data
+x_limits <- c(1975, 2005)
+x_breaks <- seq(1975, 2005, by = 10)
+
+# First plot (rolling_2y_cite)
+panel_d_1 <- for_panel_d %>%
+  filter(calendar_year <= 2005, calendar_year >= 1975) %>%
+  filter(name == 'rolling_2y_cite') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = "#0072B2") + 
+  geom_line(linewidth = 0.8, color = "#0072B2") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  geom_vline(xintercept = 1990, linetype = "dashed", color = 'darkgrey') + 
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(margin = margin(r = 10)),  # Add margin to the y-axis text
+        axis.title.y = element_text(angle = 90, vjust = 0.5)) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) + 
+  scale_y_continuous(labels = scales::label_number(accuracy = 1)) +  # Adjust y-axis labels format
+  labs(title = "D. Subfield by PMID:6934526") +
+  ylab('2y Avg. Citations')  # Y-axis label for the first plot
+
+# Second plot (cite_diff_2y_scaled)
+panel_d_2 <- for_panel_d %>%
+  filter(calendar_year <= 2005, calendar_year >= 1975) %>%
+  filter(name == 'cite_diff_2y_scaled') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = 'darkgrey', shape = 15) + 
+  geom_line(linewidth = 0.8, linetype = 1, color = "darkgrey") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  geom_vline(xintercept = 1990, linetype = "dashed", color = 'darkgrey') + 
+  theme(axis.title.y = element_text(angle = 0, vjust = 0.5, margin = margin(r = 10)),  # Add margin to y-axis labels
+        axis.text.y = element_text(margin = margin(r = 10)),
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.1)) +  # Adjust y-axis labels format
+  ylab(bquote(z[it])) +  # Y-axis label for the second plot
+  xlab('Calendar Year')  # Label x-axis
+
+# Align and arrange the plots
+gA <- ggplotGrob(panel_d_1)
+gB <- ggplotGrob(panel_d_2)
+maxWidth <- grid::unit.pmax(gA$widths[2:5], gB$widths[2:5])
+gA$widths[2:5] <- as.list(maxWidth)
+gB$widths[2:5] <- as.list(maxWidth)
+
+# Combine the plots vertically
+panel_d <- grid.arrange(gA, gB, ncol = 1)
+```
+
+
+
+```{r}
+for_panel_e <- df %>%
+  filter(src_pmid == 10820025) %>%
+  select(calendar_year, cite_diff_2y_scaled, rolling_2y_cite) %>%
+  pivot_longer(-calendar_year)
+
+# Set x-axis limits and breaks for this data
+x_limits <- c(1985, 2019)
+x_breaks <- seq(1985, 2019, by = 10)
+
+# First plot (rolling_2y_cite)
+panel_e_1 <- for_panel_e %>%
+  filter(calendar_year <= 2019, calendar_year >= 1985) %>%
+  filter(name == 'rolling_2y_cite') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = "#0072B2") + 
+  geom_line(linewidth = 0.8, color = "#0072B2") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  geom_vline(xintercept = 2008, linetype = "dashed", color = 'darkgrey') + 
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(margin = margin(r = 10)),
+        axis.title.y = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) + 
+  scale_y_continuous(labels = scales::label_number(accuracy = 1)) + 
+  labs(title = "E. Subfield by PMID:10820025") +
+  ylab("")  # Make y-axis label blank
+
+# Second plot (cite_diff_2y_scaled)
+panel_e_2 <- for_panel_e %>%
+  filter(calendar_year <= 2019, calendar_year >= 1985) %>%
+  filter(name == 'cite_diff_2y_scaled') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = 'darkgrey', shape = 15) + 
+  geom_line(linewidth = 0.8, linetype = 1, color = "darkgrey") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  geom_vline(xintercept = 2008, linetype = "dashed", color = 'darkgrey') + 
+  theme(axis.title.y = element_text(angle = 0, vjust = 0.5, margin = margin(r = 10)),
+        axis.text.y = element_text(margin = margin(r = 10)),
+        axis.title.x = element_text(margin = margin(t = 10)),  # Ensure space for x-axis label
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.1)) + 
+  ylab("") + 
+  xlab('Calendar Year')  # Ensure x-axis label is set
+
+# Align and arrange the plots
+gA <- ggplotGrob(panel_e_1)
+gB <- ggplotGrob(panel_e_2)
+maxWidth <- grid::unit.pmax(gA$widths[2:5], gB$widths[2:5])
+gA$widths[2:5] <- as.list(maxWidth)
+gB$widths[2:5] <- as.list(maxWidth)
+
+# Combine the plots vertically
+panel_e <- grid.arrange(gA, gB, ncol = 1)
+```
+
+```{r}
+
+for_panel_f <- df %>%
+  filter(src_pmid == 8392054) %>%
+  select(calendar_year, cite_diff_2y_scaled, rolling_2y_cite) %>%
+  pivot_longer(-calendar_year)
+
+
+# Set x-axis limits and breaks for this data
+x_limits <- c(1985, 2010)
+x_breaks <- seq(1985, 2010, by = 10)
+
+# First plot (rolling_2y_cite)
+panel_f_1 <- for_panel_f %>%
+  filter(calendar_year <= 2010, calendar_year >= 1985) %>%
+  filter(name == 'rolling_2y_cite') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = "#0072B2") + 
+  geom_line(linewidth = 0.8, color = "#0072B2") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  geom_vline(xintercept = 2002, linetype = "dashed", color = 'darkgrey') + 
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(margin = margin(r = 10)),  # Add margin to the y-axis text
+        axis.title.y = element_text(angle = 90, vjust = 0.5)) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) + 
+  scale_y_continuous(labels = scales::label_number(accuracy = 1)) +  # Adjust y-axis labels format
+  labs(title = "F. Subfield by PMID:8392054") 
+  # ylab('2y Avg. Citations')  # Y-axis label for the first plot
+
+# Second plot (cite_diff_2y_scaled)
+panel_f_2 <- for_panel_f %>%
+  filter(calendar_year <= 2010, calendar_year >= 1985) %>%
+  filter(name == 'cite_diff_2y_scaled') %>%
+  ggplot(aes(x = calendar_year, y = value)) + 
+  geom_point(size = 1, color = 'darkgrey', shape = 15) + 
+  geom_line(linewidth = 0.8, linetype = 1, color = "darkgrey") + 
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  geom_vline(xintercept = 2002, linetype = "dashed", color = 'darkgrey') + 
+  theme(axis.title.y = element_text(angle = 0, vjust = 0.5, margin = margin(r = 10)),  # Add margin to y-axis labels
+        axis.text.y = element_text(margin = margin(r = 10)),
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(limits = x_limits, breaks = x_breaks) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.1)) +  # Adjust y-axis labels format
+  ylab("") +  # Make y-axis label blank
+  xlab('Calendar Year')  # Label x-axis
+
+# Align and arrange the plots
+gA <- ggplotGrob(panel_f_1)
+gB <- ggplotGrob(panel_f_2)
+maxWidth <- grid::unit.pmax(gA$widths[2:5], gB$widths[2:5])
+gA$widths[2:5] <- as.list(maxWidth)
+gB$widths[2:5] <- as.list(maxWidth)
+
+# Combine the plots vertically
+panel_f <- grid.arrange(gA, gB, ncol = 1)
+
+```
+ 
+
+
+
+
+```{r}
+final_plot <- grid.arrange(panel_a, panel_b, panel_c, panel_d, panel_e, panel_f, ncol = 3)
+
+
+# Assuming final_plot is your combined plot using grid.arrange
+final_gtable <- arrangeGrob(final_plot)
+
+# Save the plot
+ggsave("Extended_Data_Fig_3.tif", final_gtable, width = 12, height = 6, units = "in", dpi=150)
+```
+
+
+
+```{r}
+library(writexl)
+
+# Define a list of PMIDs corresponding to each panel
+pmid_list <- list(
+  "Panel_A" = 10809678,
+  "Panel_B" = 2529260,
+  "Panel_C" = 11917126,
+  "Panel_D" = 6934526,
+  "Panel_E" = 10820025,
+  "Panel_F" = 8392054
+)
+
+# Initialize an empty data frame to store all panel data
+combined_data <- data.frame()
+
+# Loop through each panel and extract relevant data
+for (panel_name in names(pmid_list)) {
+  pmid <- pmid_list[[panel_name]]
+  
+  # Extract and prepare data for current panel
+  panel_data <- df %>%
+    filter(src_pmid == pmid) %>%
+    select(calendar_year, rolling_2y_cite, cite_diff_2y_scaled) %>%
+    arrange(calendar_year) %>%
+    mutate(
+      Panel = panel_name,
+      PMID = pmid
+    ) %>%
+    select(Panel, PMID, everything()) %>%  # Reorder columns to put Panel and PMID first
+    rename(
+      Calendar_Year = calendar_year,
+      Rolling_2y_Citations = rolling_2y_cite,
+      z_it = cite_diff_2y_scaled
+    )
+  
+  # Combine the data into one data frame
+  combined_data <- bind_rows(combined_data, panel_data)
+}
+
+# Remove rows with any empty values
+cleaned_data <- combined_data %>% drop_na()
+
+# Save the cleaned data as an Excel file
+write_xlsx(list("Extended_Fig3_Data" = cleaned_data), 'Source_Data_Extended_Fig3.xlsx')
+```
+

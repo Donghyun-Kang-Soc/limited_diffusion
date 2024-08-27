@@ -1,0 +1,48 @@
+---
+title: "Extended Data Figure 2"
+author: "Donghyun Kang"
+date: "8/21/2024"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(extrafont)
+
+data_for_extended_figure_2 <- read_tsv("../0_data/extended_data_fig_2_data.tsv")
+summary(data_for_extended_figure_2$cite_diff_2y_scaled)
+```
+
+
+
+```{r}
+extended_figure_2<- data_for_extended_figure_2  %>%
+  ggplot(aes(cite_diff_2y_scaled)) + 
+  geom_histogram(bins=40) +
+  geom_vline(xintercept=-2.64, color='grey', linewidth=1)  + 
+  theme_classic(base_family = "Gill Sans MT", base_size=16) +  
+  ylab('Count') + xlab(bquote(z[it])) +
+  scale_x_continuous(n.breaks=10) + 
+  geom_text(data = NULL, x = -4, y = 80000, label = "Sudden\nCollapse", size=6) 
+
+extended_figure_2
+```
+
+```{r}
+ggsave('Extended_Data_Fig_2.tif', dpi=150, width= 7,height=4.66)
+```
+
+```{r}
+library(writexl)
+
+# Save all data as an Excel file
+histogram_data <- data_for_extended_figure_2 %>%
+  mutate(bin = cut(cite_diff_2y_scaled, breaks = 40, include.lowest = TRUE)) %>%
+  group_by(bin) %>%
+  summarise(count = n()) %>%
+  arrange(bin)
+
+# Save the binned data as an Excel file
+write_xlsx(list("Binned_Data" = histogram_data), 'Source_Data_Extended_Fig2.xlsx')
+```
+
