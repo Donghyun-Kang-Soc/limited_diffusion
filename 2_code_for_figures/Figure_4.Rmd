@@ -1,0 +1,142 @@
+---
+title: "burst_productivity"
+author: "Donghyun"
+date: "2023-12-15"
+output: html_document
+---
+
+```{r, message=F}
+library(tidyverse)
+library(extrafont)
+library(gridExtra)
+library(grid)
+library(gridtext)
+library(ggeffects)
+library(gtable)
+library(cowplot)
+library(dplyr)
+library(ggplot2)
+library(purrr)
+```
+
+```{r}
+data_for_fig_4 <- read_tsv("../0_data/fig_4_data.tsv")
+
+year_min <- min(data_for_fig_4$year_diff)
+year_max <- max(data_for_fig_4$year_diff)
+
+# Fit the quadratic models
+models <- lapply(unique(data_for_fig_4$threshold), function(thresh) {
+  df_subset <- data_for_fig_4 %>% 
+    filter(threshold == thresh, year_diff >= year_min , year_diff <= 0)
+  lm(total_grant_cnt_new ~ poly(year_diff, 2, raw = TRUE), data = df_subset)
+})
+names(models) <- unique(data_for_fig_4$threshold)
+
+# Function to find x where prediction hits y = 0
+find_x_at_y_zero <- function(model) {
+  coefs <- coef(model)
+  a <- coefs[3]
+  b <- coefs[2]
+  c <- coefs[1]
+  discriminant <- b^2 - 4 * a * c
+
+  if (discriminant < 0) {
+    return(NA)  # No real roots
+  }
+
+  roots <- c((-b + sqrt(discriminant)) / (2 * a), 
+             (-b - sqrt(discriminant)) / (2 * a))
+  roots <- roots[roots >= year_min & roots <= year_max]
+  if (length(roots) == 0) {
+    return(NA)
+  } else {
+    return(min(roots))
+  }
+}
+
+# Find the x-value where each model's prediction hits y = 0
+x_at_y_zero <- sapply(models, find_x_at_y_zero)
+names(x_at_y_zero) <- names(models)
+
+# Prepare data for predictions
+pred_data <- expand.grid(year_diff = seq(year_min, year_max, by = 0.1), threshold = unique(data_for_fig_4$threshold))
+
+# Apply predictions and append the row where y = 0
+combined_pred_data <- data.frame()
+for (thresh in unique(pred_data$threshold)) {
+    model <- models[[thresh]]
+    max_year <- ifelse(is.na(x_at_y_zero[thresh]), year_max, x_at_y_zero[thresh])
+    pred_subset <- subset(pred_data, threshold == thresh & year_diff <= max_year)
+    pred_subset$pred <- predict(model, newdata = pred_subset)
+  
+    if (!is.na(x_at_y_zero[thresh]) && x_at_y_zero[thresh] <= year_max) {
+        last_row <- data.frame(year_diff = x_at_y_zero[thresh], threshold = thresh, pred = 0)
+        pred_subset <- rbind(pred_subset, last_row)
+    }
+  
+    combined_pred_data <- rbind(combined_pred_data, pred_subset)
+}
+
+# Separate data for before and after x = 0
+before_zero <- combined_pred_data %>% filter(year_diff <= 0)
+after_zero <- combined_pred_data %>% filter(year_diff > 0)
+
+# Plot
+figure_4 <- ggplot() +
+    geom_line(data = data_for_fig_4, aes(x = year_diff, y = total_grant_cnt_new, color = threshold, group = threshold)) +
+    geom_point(data = data_for_fig_4, aes(x = year_diff, y = total_grant_cnt_new, color = threshold)) +
+    geom_line(data = before_zero, aes(x = year_diff, y = pred, color = threshold, group = threshold), linewidth = 0.8) +
+    geom_line(data = after_zero, aes(x = year_diff, y = pred, group = threshold, color = threshold), linewidth = 0.8, linetype= "dotted") +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "darkgrey") +
+    theme_bw() +
+    ylab("# of New Grants Acknowledged") + 
+    xlab("Years Relative to Burst") +
+    scale_y_continuous(breaks = c(0, 1, 2, 3.0), limits = c(0, 3.2), expand = c(0, 0)) +
+    scale_x_continuous(breaks = seq(year_min, year_max, by = 3), labels = as.character(seq(year_min, year_max, by = 3))) +
+    theme(
+        text = element_text(family = "Gill Sans MT", size = 16),
+        axis.title.x = element_text(size = 16),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.margin = margin(t = 0, b = 0, unit = "pt"),
+        plot.margin = margin(t = 12, r = 12, b = 6, l = 12, unit = "pt"),
+        legend.box.background = element_blank(),
+        legend.key = element_blank()
+    ) +
+    scale_color_manual(values = c("Threshold 0.5%" = "#004775", "Threshold 0.25%" = "#4297c5", "Threshold 0.1%" = "#8bb0cb")) +
+    # scale_color_manual(values = c("TRUE" = "darkgrey", "FALSE" = "black")) +
+    guides(linetype = "none")
+figure_4
+ggsave("Figure_4.pdf",figure_4, width = 7, height = 4.5, units = "in", dpi=300, device = cairo_pdf)
+```
+
+```{r}
+library(writexl)
+
+# Raw data
+raw_data <- data_for_fig_4
+
+# Combined prediction data (already calculated in your original script)
+predicted_data <- combined_pred_data
+
+# X-values where prediction hits y = 0
+x_at_y_zero_df <- data.frame(
+  threshold = names(x_at_y_zero),
+  year_diff_at_y_zero = x_at_y_zero
+)
+
+# Combine all data into one list
+all_data <- list(
+  "Raw_Data" = raw_data,
+  "Predicted_Data" = predicted_data,
+  "Year_Diff_at_Y_Zero" = x_at_y_zero_df
+)
+
+# Save all data as an Excel file
+write_xlsx(all_data, 'Source_Data_Fig4.xlsx')
+```
+

@@ -1,0 +1,93 @@
+---
+title: "Figure 2"
+author: "Donghyun Kang"
+date: "8/18/2024"
+---
+```{r setup, include=FALSE}
+require(tidyverse)
+require(survival)
+require(survminer)
+require(extrafont)
+require(stringr)
+options(scipen=999)
+
+loadfonts(device = "pdf")
+
+```
+
+
+```{r}
+df_fig_2 <- read_tsv('../0_data/fig_2_data.tsv')
+```
+
+```{r}
+df_fig_2
+```
+
+```{r}
+sfit <- survfit( Surv(field_age_init,field_age_end, burst) ~ group, df_fig_2)
+```
+
+```{r}
+fig_2 <- ggsurvplot(sfit,
+    conf.int = TRUE, 
+    surv.scale = "percent",
+    size = 0.7,
+    xlim = c(2, 41),
+    ylim = c(0.65, 1),
+    break.x.by = 10,
+    legend = "bottom",
+    ggtheme = theme_bw(base_family = "Gill Sans MT", base_size = 10) + 
+              theme(legend.key.size = unit(3, "mm"),  # Adjust size of the legend keys
+                    legend.text = element_text(size = 7),
+                    legend.position = "bottom",
+                    legend.box.margin = margin(t = -10, r = 0, b = 0, l = 0)), # Negative top margin to reduce gap
+    legend.title = element_blank(),
+    palette = c('#DC3220', "#E69F00", "#0072B2"),
+    legend.labs = c("Diffusion > 90th PCT", '10th PCT ≤ Diffusion ≤ 90th PCT', "Diffusion < 10th PCT")
+)
+# Modify the plot labels and guides
+fig_2$plot <- fig_2$plot + 
+  xlab("Time (Subfield Age)") + 
+  guides(colour = guide_legend(nrow = 1))
+
+# p4
+ggsave('Figure_2.pdf', fig_2$plot, width=6, height=4, dpi=300, device = cairo_pdf)
+
+fig_2
+```
+```{r}
+library(writexl)
+
+# Create a named vector for strata mapping
+strata_mapping <- c(
+  "group=Diffusion > 90th PCT" = "Diffusion > 90th PCT",
+  "group=10th PCT ≤ Diffusion ≤ 90th PCT" = "10th PCT ≤ Diffusion ≤ 90th PCT",
+  "group=Diffusion < 10th PCT" = "Diffusion < 10th PCT"
+)
+
+# Extract survival estimates, confidence intervals, and times
+surv_summary <- summary(sfit)
+
+# Create a data frame with the extracted information
+df_surv_data <- data.frame(
+    time = surv_summary$time,
+    n_risk = surv_summary$n.risk,
+    n_event = surv_summary$n.event,
+    n_censor = surv_summary$n.censor,
+    survival = surv_summary$surv,
+    lower_ci = surv_summary$lower,
+    upper_ci = surv_summary$upper,
+    strata = strata_mapping[surv_summary$strata]
+)
+
+df_surv_data <-  df_surv_data %>%
+  filter(time >= 0)
+
+
+# Save the data frame as an Excel file
+write_xlsx(df_surv_data, 'Source_Data_Fig2.xlsx')
+```
+
+
+

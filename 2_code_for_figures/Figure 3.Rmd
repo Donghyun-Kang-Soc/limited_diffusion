@@ -1,0 +1,367 @@
+---
+title: "burst_productivity"
+author: "Donghyun"
+date: "2024-08-21"
+output: html_document
+---
+
+```{r, message=F}
+library(tidyverse)
+library(extrafont)
+library(gridExtra)
+library(grid)
+library(gridtext)
+library(ggeffects)
+library(patchwork)
+library(gridExtra)
+library(grid)
+library(gtable)
+library(lme4)
+library(cowplot)
+
+# This function may take a few minutes to run, as it will import all fonts on your system
+
+# Load fonts into R
+#loadfonts(device = "pdf")  # For Windows, or 'loadfonts(device = "postscript")' for other systems
+
+data_for_fig_3 <- read_tsv("../0_data/fig_3_data.tsv")
+```
+#separate periods 
+
+```{r}
+df_5y <- data_for_fig_3 %>%
+  filter(after_burst_window == "5y")
+
+df_10y <- data_for_fig_3 %>%
+  filter(after_burst_window == "10y")
+```
+
+#bar charts
+
+```{r}
+make_combined_plot <- function(combined_data){ 
+  # Now, summarize and calculate means and errors
+  group_summary <- combined_data %>%
+    group_by(threshold, time_period) %>%
+    summarize(
+      mean = mean(`Avg. # of Pub.`),
+      sd = sd(`Avg. # of Pub.`),
+      count = n(),
+      .groups = 'drop'  # Drop the last level of grouping
+    ) %>%
+    mutate(
+      se = sd / sqrt(count),
+      lower = mean - 1.96*se,
+      upper = mean + 1.96*se
+    )
+  
+  # Create the combined plot
+  plot <- ggplot(group_summary, aes(x = threshold, y = mean, fill=time_period)) +
+    geom_col(position = position_dodge(width = 0.7), width = 0.6)  + 
+    # geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.25, position = position_dodge(0.7)) +
+    theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+    labs(
+      title = element_blank(),
+      x = element_blank(),
+      y = "Mean # of Publications",
+      color = "Time Period"
+    ) +
+    theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(), # Hide all minor grid lines
+      legend.position = "bottom",
+      legend.title=element_blank(),
+      legend.margin = margin(t = -10, b = 0, unit = "pt") 
+    ) +
+    scale_color_manual(values = c("Earlier Entrants" = "#009E73", "Near-Collapse Actives (≤ 2y)" = "#0072B2"))+
+  scale_fill_manual(values = c("Earlier Entrants" = "#009E73", "Near-Collapse Actives (≤ 2y)" = "#0072B2"))
+  
+plot
+}
+```
+
+```{r}
+combined_plot_5y <- make_combined_plot(df_5y)
+combined_plot_10y <- make_combined_plot(df_10y)
+
+combined_plot_5y 
+combined_plot_10y 
+```
+```{r}
+get_only_legend <- function(plot) { 
+    
+# get tabular interpretation of plot 
+plot_table <- ggplot_gtable(ggplot_build(plot))  
+    
+#  Mark only legend in plot 
+legend_plot <- which(sapply(plot_table$grobs, function(x) x$name) == "guide-box")  
+                              
+# extract legend 
+legend <- plot_table$grobs[[legend_plot]] 
+                              
+# return legend 
+return(legend)  
+}
+
+legend <- get_only_legend(combined_plot_5y)
+```
+
+##t-test part
+
+```{r}
+
+run_paired_t_test <- function(df, col1, col2) {
+  test_result <- t.test(df[[col1]], df[[col2]], paired = TRUE)
+  res <- data.frame(
+    dataset = deparse(substitute(df)),
+    mean_difference = test_result$estimate,
+    lower_ci = test_result$conf.int[1],
+    upper_ci = test_result$conf.int[2],
+    p_value = test_result$p.value
+  )
+  print(test_result)
+  res
+}
+
+df_5y_50 <- df_5y %>%
+  filter(threshold == "Threshold of 0.5%") %>%
+  pivot_wider(
+    id_cols = c(src_pmid, burst_year, threshold, after_burst_window), 
+    names_from = time_period, 
+    values_from = `Avg. # of Pub.`
+  )
+
+df_5y_25 <- df_5y %>%
+  filter(threshold == "Threshold of 0.25%") %>%
+  pivot_wider(
+    id_cols = c(src_pmid, burst_year, threshold, after_burst_window), 
+    names_from = time_period, 
+    values_from = `Avg. # of Pub.`
+  )
+
+df_5y_10 <- df_5y %>%
+  filter(threshold == "Threshold of 0.1%") %>%
+  pivot_wider(
+    id_cols = c(src_pmid, burst_year, threshold, after_burst_window), 
+    names_from = time_period, 
+    values_from = `Avg. # of Pub.`
+  )
+
+
+result_list <- lapply(list(df_5y_50, df_5y_25, df_5y_10), 
+                      run_paired_t_test, col1 = "Near-Collapse Actives (≤ 2y)", col2 = "Earlier Entrants")
+
+combined_results_5y <- as_tibble(do.call(rbind, result_list))
+names_for_df <- c("Threshold of 0.5%", "Threshold of 0.25%", "Threshold of 0.1%")
+
+combined_results_5y <- combined_results_5y %>%
+  mutate(dataset = factor(names_for_df, levels = names_for_df) ) %>%
+  mutate(
+    mean_difference = round(mean_difference, 3),
+    lower_ci = round(lower_ci, 3),
+    upper_ci = round(upper_ci, 3),
+    p_value = round(p_value, 3)
+  )
+
+combined_results_5y
+```
+
+```{r}
+df_10y_50 <- df_10y %>%
+  filter(threshold == "Threshold of 0.5%") %>%
+  pivot_wider(
+    id_cols = c(src_pmid, burst_year, threshold, after_burst_window), 
+    names_from = time_period, 
+    values_from = `Avg. # of Pub.`
+  )
+
+df_10y_25 <- df_10y %>%
+  filter(threshold == "Threshold of 0.25%") %>%
+  pivot_wider(
+    id_cols = c(src_pmid, burst_year, threshold, after_burst_window), 
+    names_from = time_period, 
+    values_from = `Avg. # of Pub.`
+  )
+
+df_10y_10 <- df_10y %>%
+  filter(threshold == "Threshold of 0.1%") %>%
+  pivot_wider(
+    id_cols = c(src_pmid, burst_year, threshold, after_burst_window), 
+    names_from = time_period, 
+    values_from = `Avg. # of Pub.`
+  )
+
+
+result_list <- lapply(list(df_10y_50, df_10y_25, df_10y_10), 
+                      run_paired_t_test, col1 = "Near-Collapse Actives (≤ 2y)", col2 = "Earlier Entrants")
+
+combined_results_10y <- as_tibble(do.call(rbind, result_list))
+names_for_df <- c("Threshold of 0.5%", "Threshold of 0.25%", "Threshold of 0.1%")
+
+combined_results_10y <- combined_results_10y %>%
+  mutate(dataset = factor(names_for_df, levels = names_for_df) ) %>%
+  mutate(
+    mean_difference = round(mean_difference, 3),
+    lower_ci = round(lower_ci, 3),
+    upper_ci = round(upper_ci, 3),
+    p_value = round(p_value, 3)
+  )
+
+combined_results_10y
+```
+
+```{r}
+plot_5y_t_test <- ggplot(combined_results_5y, aes(x = dataset, y = mean_difference)) +
+  geom_point( position = position_dodge(0.35), color='darkgrey') +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2,  position = position_dodge(0.35), color='darkgrey') +
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank(),
+        axis.title.y = element_text(size = 14, family = "Gill Sans MT")
+        ) +
+  labs(x = NULL, y = "Mean Difference") +coord_cartesian(ylim = c(-4, 0)) + 
+  scale_y_continuous(breaks = seq(-4, 0, by = 1)) 
+
+
+plot_10y_t_test <- ggplot(combined_results_10y, aes(x = dataset, y = mean_difference)) +
+  geom_point( position = position_dodge(0.35), color='darkgrey') +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2,  position = position_dodge(0.35), color='darkgrey') +
+  theme_bw(base_family = "Gill Sans MT", base_size = 12) +
+  theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank(),
+        axis.title.y = element_text(size = 14, family = "Gill Sans MT")
+        ) +
+  labs(x = NULL, y = "Mean Difference") + coord_cartesian(ylim = c(-6, 0)) + scale_y_continuous(breaks = seq(-6, 0, by = 2)) + 
+  scale_y_continuous(breaks = seq(-6, 0, by = 2)) 
+
+
+plot_5y_t_test
+plot_10y_t_test
+```
+
+
+```{r}
+combined_5_final<-   combined_plot_5y + 
+    theme(
+      # plot.title = element_text(size = 14, hjust = 0.5, family = "Gill Sans MT"),
+      # axis.ticks.x = element_blank(),
+      axis.title.x = element_blank(),
+      # axis.text.x = element_blank(),
+      axis.title.y = element_text(size = 14, family = "Gill Sans MT")
+    ) + labs( x=NULL) +  coord_cartesian(ylim = c(8, NA))
+
+
+combined_10_final<-   combined_plot_10y +  coord_cartesian(ylim = c(18, 26)) + 
+    theme(
+      # plot.title = element_text(size = 14, hjust = 0.5, family = "Gill Sans MT"),
+      # axis.ticks.x = element_blank(),
+      axis.title.x = element_blank(),
+      # axis.text.x = element_blank(),
+      axis.title.y = element_text(size = 14, family = "Gill Sans MT") 
+    ) + labs(x=NULL) 
+
+
+# Assuming combined_5_final and plot_5y_t_test are two ggplot objects
+
+# Convert plots to grobs
+grob1 <- ggplotGrob(combined_5_final)
+grob2 <- ggplotGrob(plot_5y_t_test)
+
+# Ensure that the heights of the two grobs are the same
+max_height <- unit.pmax(grob1$heights, grob2$heights)
+grob1$heights <- max_height
+grob2$heights <- max_height
+
+# Arrange the two grobs with a title on top
+combined_plot_5y <- arrangeGrob(
+  grob1, grob2,
+  top = textGrob("5 Years After Collapse", 
+                 vjust = 1, 
+                 gp = gpar(fontsize = 16, fontfamily = "Gill Sans MT")),
+  ncol = 2
+)
+grid.newpage()
+grid.draw(combined_plot_5y)
+```
+
+
+```{r}
+# Convert plots to grobs
+grob3 <- ggplotGrob(combined_10_final)
+grob4 <- ggplotGrob(plot_10y_t_test)
+
+# Ensure that the heights of the two grobs are the same
+max_height <- unit.pmax(grob3$heights, grob4$heights)
+grob3$heights <- max_height
+grob4$heights <- max_height
+
+# Arrange the two grobs with a title on top
+combined_plot_10y <- arrangeGrob(
+  grob3, grob4,
+  top = textGrob("10 Years After Collapse", 
+                 vjust = 1, 
+                 gp = gpar(fontsize = 16, fontfamily = "Gill Sans MT")),
+  ncol = 2
+)
+
+# Draw the combined plot
+grid.newpage()
+grid.draw(combined_plot_10y)
+```
+
+```{r}
+final_plot <- grid.arrange(
+  combined_plot_5y, 
+  combined_plot_10y, 
+  nrow = 2,
+  heights = c(2, 2) # Adjust these values as necessary for your content
+)
+
+# Draw the final plot
+grid.newpage()
+grid.draw(final_plot)
+
+
+plot_real_final <- grid.arrange(final_plot, legend, nrow = 2, heights = c(10, 0.8))
+
+ggsave("Figure_3.pdf", plot_real_final, width = 9, height = 6, units = "in", dpi=300, device = cairo_pdf)
+
+```
+
+```{r}
+library(writexl)
+
+# Function to summarize the data for bar charts
+make_combined_plot_data <- function(combined_data){ 
+  # Summarize and calculate means and errors
+  group_summary <- combined_data %>%
+    group_by(threshold, time_period) %>%
+    summarize(
+      mean = mean(`Avg. # of Pub.`),
+      sd = sd(`Avg. # of Pub.`),
+      count = n(),
+      .groups = 'drop'
+    ) %>%
+    mutate(
+      se = sd / sqrt(count),
+      lower = mean - 1.96*se,
+      upper = mean + 1.96*se
+    )
+  
+  return(group_summary)
+}
+
+# Summarize data for both periods
+summary_5y <- make_combined_plot_data(df_5y)
+summary_10y <- make_combined_plot_data(df_10y)
+
+# Combine all data into one list
+all_data <- list(
+  "5y_Bar_Chart_Data" = summary_5y,
+  "10y_Bar_Chart_Data" = summary_10y,
+  "5y_T_Test_Data" = combined_results_5y,
+  "10y_T_Test_Data" = combined_results_10y
+)
+
+# Save all data as an Excel file
+write_xlsx(all_data, 'Source_Data_Fig3.xlsx')
+```
+
