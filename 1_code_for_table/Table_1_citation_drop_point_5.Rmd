@@ -1,0 +1,180 @@
+---
+title: "0.5 regression"
+author: "Donghyun"
+---
+```{r setup, include=FALSE}
+require(tidyverse)
+require(fixest)
+require(stringr)
+require(broom)
+
+options(scipen=999)
+df_table_1 <- read_tsv('../0_data/table_1_data.tsv')
+```
+
+
+```{r}
+mod_1 <- fixest::feglm(burst ~  
+                             
+mesh_normalized + aid_normalized |   field_age , df_table_1, family=binomial(link = "logit"), cluster = ~ calendar_year + strata_id, fixef.rm = 'none')
+
+summary(mod_1)
+
+model_1_sum <- summary(mod_1)
+mod_1_coef_table <- as_tibble(model_1_sum$coeftable, rownames = "var")
+mod_1_coef_table<- mod_1_coef_table%>%
+  mutate(across(2:5, round, 3)) %>%
+  select(var, `Estimate`, `Std. Error`, `z value`, `Pr(>|z|)`)
+mod_1_coef_table
+```
+
+
+
+```{r}
+#s.e. clustered only at strata_id
+mod_2 <- fixest::feglm(burst ~  
+                             
+mesh_normalized + aid_normalized + log(subfield_num_paper_cum) +  field_2y_activity | field_age , df_table_1, family=binomial(link = "logit"), cluster = ~ calendar_year  + strata_id, fixef.rm = 'none')
+
+summary(mod_2)
+
+model_2_sum <- summary(mod_2)
+mod_2_coef_table <- as_tibble(model_2_sum$coeftable, rownames = "var")
+mod_2_coef_table <- mod_2_coef_table %>%
+  mutate(across(2:5, round, 3)) %>%
+  select(var, `Estimate`, `Std. Error`, `z value`, `Pr(>|z|)`)
+mod_2_coef_table
+```
+
+
+
+```{r}
+#s.e. clustered only at strata_id
+mod_3 <- fixest::feglm(burst ~  
+                             
+mesh_normalized + aid_normalized +  
+
+log(subfield_num_paper_cum) +  field_2y_activity + ln_cum_cite_cnt_lagged +
+  ln_cum_cite_2y_lagged  + cum_gini_lagged +  cum_gini_2_years_lagged 
+  |  field_age ,df_table_1, family=binomial(link = "logit"), cluster = ~ calendar_year + strata_id, fixef.rm = 'none')
+
+summary(mod_3)
+
+
+model_3_sum <- summary(mod_3)
+mod_3_coef_table <- as_tibble(model_3_sum$coeftable, rownames = "var")
+mod_3_coef_table <- mod_3_coef_table %>%
+  mutate(across(2:5, round, 3)) %>%
+  select(var, `Estimate`, `Std. Error`, `z value`, `Pr(>|z|)`)
+mod_3_coef_table
+```
+
+
+
+```{r}
+#s.e. clustered only at strata_id
+mod_4 <- fixest::feglm(burst ~  
+                             
+mesh_normalized + aid_normalized + 
+
+
+log(subfield_num_paper_cum) +  field_2y_activity + 
+  
+ln_cum_cite_cnt_lagged +
+ln_cum_cite_2y_lagged  + 
+cum_gini_lagged +  
+cum_gini_2_years_lagged  +
+
+  retraction_notice_published  + after_death + death_treat_inter|   field_age , df_table_1, family=binomial(link = "logit"), cluster = ~ calendar_year + strata_id, fixef.rm = 'none')
+
+
+summary(mod_4)
+
+model_4_sum <- summary(mod_4)
+mod_4_coef_table <- as_tibble(model_4_sum$coeftable, rownames = "var")
+mod_4_coef_table  <- mod_4_coef_table  %>%
+  mutate(across(2:5, round, 3)) %>%
+  select(var, `Estimate`, `Std. Error`, `z value`, `Pr(>|z|)`)
+mod_4_coef_table 
+```
+
+```{r}
+#s.e. clustered only at strata_id
+mod_5 <- fixest::feglm(burst ~  
+                             
+mesh_normalized + aid_normalized + 
+
+
+log(subfield_num_paper_cum) +  field_2y_activity + 
+  
+ln_cum_cite_cnt_lagged +
+ln_cum_cite_2y_lagged  + 
+cum_gini_lagged +  
+cum_gini_2_years_lagged  +
+
+  retraction_notice_published  + after_death + death_treat_inter|   field_age +  calendar_year + strata_id, df_table_1, family=binomial(link = "logit"), cluster = ~ calendar_year +strata_id, fixef.rm = 'none')
+
+
+summary(mod_5)
+
+model_5_sum <- summary(mod_5)
+mod_5_coef_table <- as_tibble(model_5_sum$coeftable, rownames = "var")
+mod_5_coef_table  <- mod_5_coef_table  %>%
+  mutate(across(2:5, round, 3)) %>%
+  select(var, `Estimate`, `Std. Error`, `z value`, `Pr(>|z|)`)
+mod_5_coef_table 
+```
+
+```{r}
+# Function to format model output
+format_model_output <- function(model, model_name) {
+  tidy_model <- broom::tidy(model)
+  confint_model <- confint(model)
+  
+  # Converting confint output to a data frame
+  confint_df <- as.data.frame(confint_model)
+  names(confint_df) <- c("conf.low", "conf.high")
+  confint_df$term <- rownames(confint_df)
+  rownames(confint_df) <- NULL
+  
+  # Merging tidy model with confidence intervals
+  merged_model <- left_join(tidy_model, confint_df, by = "term")
+
+  # Formatting the output
+  merged_model %>%
+    mutate(model_output = paste0(round(estimate, 3), 
+                                 ",[", round(conf.low, 3), ", ", round(conf.high, 3), "], ",
+                                 ifelse(p.value < 0.001, "p < 0.001", paste0("p = ", round(p.value, 3))))) %>%
+    select(term, model_output) %>%
+    rename(!!model_name := model_output)
+}
+
+# Applying the function to each model and assigning a model name
+formatted_mod_1 <- format_model_output(mod_1, "Model 1")
+formatted_mod_2 <- format_model_output(mod_2, "Model 2")
+formatted_mod_3 <- format_model_output(mod_3, "Model 3")
+formatted_mod_4 <- format_model_output(mod_4, "Model 4")
+formatted_mod_5 <- format_model_output(mod_5, "Model 5")
+
+# Combining the results into a single data frame
+combined_results <- list(formatted_mod_1, formatted_mod_2, formatted_mod_3, formatted_mod_4, formatted_mod_5) %>%
+  reduce(full_join, by = "term")
+
+
+insert_empty_row <- function(df, position) {
+  top <- df %>% slice(1:(position - 1))
+  bottom <- df %>% slice(position:n())
+
+  # Creating an empty row with the same structure
+  empty_row <- df %>% slice(1) %>% mutate_all(~NA)
+  bind_rows(top, empty_row, bottom)
+}
+
+# Inserting empty rows at specified positions
+combined_results <- combined_results %>%
+  insert_empty_row(3) %>%
+  insert_empty_row(6) %>%
+  insert_empty_row(11)
+
+combined_results
+```
